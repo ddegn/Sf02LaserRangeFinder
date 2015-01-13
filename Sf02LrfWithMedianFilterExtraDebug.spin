@@ -30,7 +30,7 @@ CON
 
   INVALID_READING = -999
 
-  SAMPLES_TO_FILTER = 21
+  SAMPLES_TO_FILTER = 9
    
 VAR
 
@@ -46,23 +46,41 @@ PUB Setup
   Pst[0].Start(DEBUG_BAUD)
   Pst[1].StartRxTx(SR02_RX_PIN, SR02_TX_PIN, 0, SR02_BAUD)
 
-  Pst[1].Clear
-  Pst[1].Home  
+  repeat
+    Pst[0].Str(string(11, 13, "Press any key to begin."))
+    result := Pst[0].RxCount
+    waitcnt(clkfreq / 2 + cnt)
+  until result
+
+  Pst[0].RxFlush
+  Pst[0].Clear
+  Pst[0].Home  
    
   MainLoop
   
 PUB MainLoop | inputCharacter
 
   repeat
-    Pst[0].Home
-    Pst[1].Str(string(11, 13, "LRF Median Demo", 11, 13, 11, 13)) 
+    'Pst[0].Clear  ' Uncomment these two lines to have each reading displayed at top of screen.
+    'Pst[0].Home
+    Pst[0].Str(string(11, 13, "LRF Median Demo", 11, 13, 11, 13)) 
     rangeInCentimeters := FilterLrf(@samplesToFilter, SAMPLES_TO_FILTER)
     if rangeInCentimeters == INVALID_READING
       Pst[0].Str(string(11, 13, "Not Valid", 11, 13))
     else
       Pst[0].Str(string(11, 13, "Filtered Reading = "))
       Pst[0].Dec(rangeInCentimeters)
-      Pst[0].Str(string(" cm", 11, 13))  
+      Pst[0].Str(string(" cm", 11, 13))
+
+    Pst[0].Str(string(11, 13, "Array size: "))
+    Pst[0].Dec(SAMPLES_TO_FILTER)
+
+    Pst[0].Str(string(11, 13, "Samples filtered = "))
+    DisplayArray(@samplesToFilter, SAMPLES_TO_FILTER)
+    Pst[0].Str(string(11, 13, "Press any key to continue.", 11, 13))
+    result := Pst[0].CharIn
+    Pst[0].ClearEnd
+  
   
 PUB FilterLrf(arrayAddress, sampleToFilter) | sampleIndex, finalIndex
 
@@ -98,12 +116,44 @@ PUB LongMedian(arrayAddress, elements) | halfTheElements, toCompareIndex, {
     elementsSmaller := 0   
     repeat compareAgainstIndex from 0 to maxIndex
       if long[arrayAddress][toCompareIndex] > long[arrayAddress][compareAgainstIndex]
-        elementsSmaller++   
+        elementsSmaller++
+        Pst[0].Str(string(11, 13, "samplesToFilter["))
+        Pst[0].Dec(toCompareIndex)
+        Pst[0].Str(string("]("))
+        Pst[0].Dec(long[arrayAddress][toCompareIndex])
+        Pst[0].Str(string(") > samplesToFilter["))
+        Pst[0].Dec(compareAgainstIndex)
+        Pst[0].Str(string("]("))
+        Pst[0].Dec(long[arrayAddress][compareAgainstIndex])
+        Pst[0].Str(string("), elementsSmaller = "))
+        Pst[0].Dec(elementsSmaller)        
       elseif long[arrayAddress][toCompareIndex] < long[arrayAddress][compareAgainstIndex]
         elementsLarger++
+        Pst[0].Str(string(11, 13, "samplesToFilter["))
+        Pst[0].Dec(toCompareIndex)
+        Pst[0].Str(string("]("))
+        Pst[0].Dec(long[arrayAddress][toCompareIndex])
+        Pst[0].Str(string(") < samplesToFilter["))
+        Pst[0].Dec(compareAgainstIndex)
+        Pst[0].Str(string("]("))
+        Pst[0].Dec(long[arrayAddress][compareAgainstIndex])
+        Pst[0].Str(string("), elementsLarger = "))
+        Pst[0].Dec(elementsLarger)
     if elementsSmaller =< halfTheElements and elementsLarger =< halfTheElements
       return long[arrayAddress][toCompareIndex]
+  
+PUB DisplayArray(arrayAddress, elements)
 
+  elements--
+  repeat result from 0 to elements
+    Pst[0].Dec(long[arrayAddress][result])
+    if result == elements
+      Pst[0].Char(11)
+      Pst[0].Char(13)
+    else
+      Pst[0].Char(",")
+      Pst[0].Char(" ")
+      
 DAT {{Terms of Use: MIT License
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of this
